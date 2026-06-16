@@ -99,10 +99,7 @@ def init_kk_imgs() -> dict[tuple[int, int], pg.Surface]:
     移動方向とこうかとん画像の辞書生成
     """
     org_img = pg.transform.rotozoom(
-        pg.image.load("fig/3.png"),
-        0,
-        0.9
-    )
+        pg.image.load("fig/3.png"),0,0.9)
 
     right_img = pg.transform.flip(org_img, True, False)
 

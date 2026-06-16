@@ -18,8 +18,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 def check_bound(rct: pg.Rect) -> tuple[bool, bool]:
     """
-    引数：こうかとんRectまたは爆弾Rect
-    戻り値：(横方向判定, 縦方向判定)
+    画面内判定
     """
     yoko, tate = True, True
 
@@ -34,7 +33,7 @@ def check_bound(rct: pg.Rect) -> tuple[bool, bool]:
 
 def gameover(screen: pg.Surface) -> None:
     """
-    ゲームオーバー画面を表示する
+    ゲームオーバー画面表示
     """
     black = pg.Surface((WIDTH, HEIGHT))
     black.fill((0, 0, 0))
@@ -47,10 +46,10 @@ def gameover(screen: pg.Surface) -> None:
     )
 
     left_rct = cry_img.get_rect()
-    left_rct.center = (WIDTH // 2 - 220, HEIGHT // 2)
+    left_rct.center = (WIDTH//2-220, HEIGHT//2)
 
     right_rct = cry_img.get_rect()
-    right_rct.center = (WIDTH // 2 + 220, HEIGHT // 2)
+    right_rct.center = (WIDTH//2+220, HEIGHT//2)
 
     font = pg.font.Font(None, 90)
 
@@ -61,7 +60,7 @@ def gameover(screen: pg.Surface) -> None:
     )
 
     txt_rct = txt.get_rect()
-    txt_rct.center = (WIDTH // 2, HEIGHT // 2)
+    txt_rct.center = (WIDTH//2, HEIGHT//2)
 
     screen.blit(black, (0, 0))
     screen.blit(cry_img, left_rct)
@@ -74,7 +73,7 @@ def gameover(screen: pg.Surface) -> None:
 
 def init_bb_imgs() -> tuple[list[pg.Surface], list[int]]:
     """
-    爆弾画像リストと加速度リストを生成する
+    爆弾画像リストと加速度リスト生成
     """
     bb_imgs = []
 
@@ -94,6 +93,47 @@ def init_bb_imgs() -> tuple[list[pg.Surface], list[int]]:
     return bb_imgs, bb_accs
 
 
+def init_kk_imgs() -> dict[tuple[int, int], pg.Surface]:
+    """
+    移動方向とこうかとん画像の辞書生成
+    """
+    org_img = pg.transform.rotozoom(
+        pg.image.load("fig/3.png"),
+        0,
+        0.9
+    )
+
+    right_img = pg.transform.flip(org_img, True, False)
+
+    return {
+        (0, 0): org_img,
+
+        # 右
+        (+5, 0): right_img,
+
+        # 右上
+        (+5, -5): pg.transform.rotozoom(right_img, 45, 1.0),
+
+        # 上
+        (0, -5): pg.transform.rotozoom(org_img, -90, 1.0),
+
+        # 左上
+        (-5, -5): pg.transform.rotozoom(org_img, -45, 1.0),
+
+        # 左
+        (-5, 0): org_img,
+
+        # 左下
+        (-5, +5): pg.transform.rotozoom(org_img, 45, 1.0),
+
+        # 下
+        (0, +5): pg.transform.rotozoom(org_img, 90, 1.0),
+
+        # 右下
+        (+5, +5): pg.transform.rotozoom(right_img, -45, 1.0),
+    }
+
+
 def main():
     pg.display.set_caption("逃げろ！こうかとん")
 
@@ -101,16 +141,14 @@ def main():
 
     bg_img = pg.image.load("fig/pg_bg.jpg")
 
-    kk_img = pg.transform.rotozoom(
-        pg.image.load("fig/3.png"),
-        0,
-        0.9
-    )
+    # こうかとん画像辞書
+    kk_imgs = init_kk_imgs()
+    kk_img = kk_imgs[(0, 0)]
 
     kk_rct = kk_img.get_rect()
     kk_rct.center = (300, 200)
 
-    # 爆弾画像・加速度リスト
+    # 爆弾画像リスト
     bb_imgs, bb_accs = init_bb_imgs()
 
     bb_img = bb_imgs[0]
@@ -131,7 +169,7 @@ def main():
 
         screen.blit(bg_img, (0, 0))
 
-        # こうかとん移動
+        # キー入力
         key_lst = pg.key.get_pressed()
         sum_mv = [0, 0]
 
@@ -140,13 +178,15 @@ def main():
                 sum_mv[0] += mv[0]
                 sum_mv[1] += mv[1]
 
+        # 向き変更
+        if tuple(sum_mv) in kk_imgs:
+            kk_img = kk_imgs[tuple(sum_mv)]
+
+        # 移動
         kk_rct.move_ip(sum_mv)
 
         if check_bound(kk_rct) != (True, True):
-            kk_rct.move_ip(
-                -sum_mv[0],
-                -sum_mv[1]
-            )
+            kk_rct.move_ip(-sum_mv[0], -sum_mv[1])
 
         screen.blit(kk_img, kk_rct)
 
@@ -156,9 +196,6 @@ def main():
         bb_img = bb_imgs[idx]
 
         center = bb_rct.center
-
-        bb_rct.width = bb_img.get_width()
-        bb_rct.height = bb_img.get_height()
 
         bb_rct = bb_img.get_rect(center=center)
 

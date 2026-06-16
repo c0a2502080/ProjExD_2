@@ -20,8 +20,6 @@ def check_bound(rct: pg.Rect) -> tuple[bool, bool]:
     """
     引数：こうかとんRectまたは爆弾Rect
     戻り値：(横方向判定, 縦方向判定)
-    True：画面内
-    False：画面外
     """
     yoko, tate = True, True
 
@@ -38,26 +36,22 @@ def gameover(screen: pg.Surface) -> None:
     """
     ゲームオーバー画面を表示する
     """
-    # 半透明黒背景
     black = pg.Surface((WIDTH, HEIGHT))
     black.fill((0, 0, 0))
     black.set_alpha(180)
 
-    # 泣きこうかとん（大きめ）
     cry_img = pg.transform.rotozoom(
         pg.image.load("fig/8.png"),
         0,
         1.5
     )
 
-    # 左右配置
     left_rct = cry_img.get_rect()
     left_rct.center = (WIDTH // 2 - 220, HEIGHT // 2)
 
     right_rct = cry_img.get_rect()
     right_rct.center = (WIDTH // 2 + 220, HEIGHT // 2)
 
-    # Game Over文字
     font = pg.font.Font(None, 90)
 
     txt = font.render(
@@ -69,7 +63,6 @@ def gameover(screen: pg.Surface) -> None:
     txt_rct = txt.get_rect()
     txt_rct.center = (WIDTH // 2, HEIGHT // 2)
 
-    # 描画
     screen.blit(black, (0, 0))
     screen.blit(cry_img, left_rct)
     screen.blit(cry_img, right_rct)
@@ -77,6 +70,28 @@ def gameover(screen: pg.Surface) -> None:
 
     pg.display.update()
     time.sleep(5)
+
+
+def init_bb_imgs() -> tuple[list[pg.Surface], list[int]]:
+    """
+    爆弾画像リストと加速度リストを生成する
+    """
+    bb_imgs = []
+
+    for r in range(1, 11):
+        bb_img = pg.Surface((20*r, 20*r))
+        pg.draw.circle(
+            bb_img,
+            (255, 0, 0),
+            (10*r, 10*r),
+            10*r
+        )
+        bb_img.set_colorkey((0, 0, 0))
+        bb_imgs.append(bb_img)
+
+    bb_accs = [a for a in range(1, 11)]
+
+    return bb_imgs, bb_accs
 
 
 def main():
@@ -95,23 +110,19 @@ def main():
     kk_rct = kk_img.get_rect()
     kk_rct.center = (300, 200)
 
-    # 爆弾生成
-    bb_img = pg.Surface((20, 20))
-    pg.draw.circle(
-        bb_img,
-        (255, 0, 0),
-        (10, 10),
-        10
-    )
-    bb_img.set_colorkey((0, 0, 0))
+    # 爆弾画像・加速度リスト
+    bb_imgs, bb_accs = init_bb_imgs()
 
+    bb_img = bb_imgs[0]
     bb_rct = bb_img.get_rect()
+
     bb_rct.centerx = random.randint(0, WIDTH)
     bb_rct.centery = random.randint(0, HEIGHT)
 
     vx, vy = 5, 5
 
     clock = pg.time.Clock()
+    tmr = 0
 
     while True:
         for event in pg.event.get():
@@ -120,9 +131,8 @@ def main():
 
         screen.blit(bg_img, (0, 0))
 
-        # キー入力
+        # こうかとん移動
         key_lst = pg.key.get_pressed()
-
         sum_mv = [0, 0]
 
         for key, mv in DELTA.items():
@@ -130,7 +140,6 @@ def main():
                 sum_mv[0] += mv[0]
                 sum_mv[1] += mv[1]
 
-        # こうかとん移動
         kk_rct.move_ip(sum_mv)
 
         if check_bound(kk_rct) != (True, True):
@@ -141,8 +150,22 @@ def main():
 
         screen.blit(kk_img, kk_rct)
 
-        # 爆弾移動
-        bb_rct.move_ip(vx, vy)
+        # 爆弾サイズ・速度変更
+        idx = min(tmr // 500, 9)
+
+        bb_img = bb_imgs[idx]
+
+        center = bb_rct.center
+
+        bb_rct.width = bb_img.get_width()
+        bb_rct.height = bb_img.get_height()
+
+        bb_rct = bb_img.get_rect(center=center)
+
+        avx = vx * bb_accs[idx]
+        avy = vy * bb_accs[idx]
+
+        bb_rct.move_ip(avx, avy)
 
         yoko, tate = check_bound(bb_rct)
 
@@ -160,6 +183,8 @@ def main():
             return
 
         pg.display.update()
+
+        tmr += 1
         clock.tick(50)
 
 
